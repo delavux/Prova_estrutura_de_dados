@@ -7,13 +7,16 @@ typedef struct {
     float valor;
 } Leitura;
 
+//fazer busca binaria,
 int buscar_mais_proximo(Leitura *leituras, int count, long alvo) {
-    int esq = 0, dir = count - 1;
+    int esquerda = 0, direita = count - 1;
     int mais_proximo = 0;
     long menor_diff = labs(leituras[0].timestamp - alvo);
 
-    while (esq <= dir) {
-        int meio = esq + (dir - esq) / 2;
+
+
+    while (esquerda <= direita) {
+        int meio = esquerda + (direita - esquerda) / 2;
         long diff = leituras[meio].timestamp - alvo;
         
         if (labs(diff) < menor_diff) {
@@ -22,14 +25,18 @@ int buscar_mais_proximo(Leitura *leituras, int count, long alvo) {
         }
         
         if (diff < 0) {
-            esq = meio + 1;
+            esquerda = meio + 1;
         } else if (diff > 0) {
-            dir = meio - 1;
+            direita = meio - 1;
         } else {
             return meio;
         }
     }
     return mais_proximo;
+
+
+
+
 }
 
 int main() {
@@ -64,6 +71,11 @@ int main() {
     printf("\nLeitura mais proxima:\n");
     printf("Timestamp: %ld\n", leituras[pos].timestamp);
     printf("Valor: %.2f\n", leituras[pos].valor);
+
+
+
     
     return 0;
+
+
 }
