@@ -1,43 +1,73 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <string.h>
 
-time_t gerar_timestamp_aleatorio(int dia, int mes, int ano) {
-    struct tm t = {0};
-    t.tm_year = ano - 1900;
-    t.tm_mon = mes - 1;
-    t.tm_mday = dia;
-    t.tm_isdst = -1;
-    
-    time_t inicio = mktime(&t);
-    t.tm_hour = 23;
-    t.tm_min = 59;
-    t.tm_sec = 59;
-    time_t fim = mktime(&t);
-    
-    return inicio + rand() % (fim - inicio + 1);
+typedef struct {
+    long timestamp;
+    float valor;
+} Leitura;
+
+// Busca binária para achar leitura com timestamp mais próximo
+//aqui não mudou muita coisa, muito parecido com a primeira prova
+int buscar_mais_proximo(Leitura *leituras, int count, long alvo) {
+    int esquerda = 0, direita = count - 1;
+    int mais_proximo = 0;
+    long menor_diff = labs(leituras[0].timestamp - alvo);
+
+    while (esquerda <= direita) {
+        int meio = esquerda + (direita - esquerda) / 2;
+        long diff = leituras[meio].timestamp - alvo;
+
+        if (labs(diff) < menor_diff) {
+            menor_diff = labs(diff);
+            mais_proximo = meio;
+        }
+
+        if (diff < 0) {
+            esquerda = meio + 1;
+        } else if (diff > 0) {
+            direita = meio - 1;
+        } else {
+            return meio;
+        }
+    }
+    return mais_proximo;
 }
 
 int main() {
-    srand(time(NULL));
-    int dia, mes, ano;
+    char sensor[20];
+    long timestamp;
+
+    printf("Digite o nome do sensor: ");
+    scanf("%19s", sensor);
+
+    printf("Digite o timestamp desejado: ");
+    scanf("%ld", &timestamp);
+
     
-    printf("Digite a data (dd mm aaaa): ");
-    scanf("%d %d %d", &dia, &mes, &ano);
-    
-    const char *sensores[] = {"TEMP", "PRES", "VIBR", "UMID", "FLUX"};
-    FILE *saida = fopen("dados_teste.txt", "w");
-    
-    for (int i = 0; i < 5; i++) {
-        for (int j = 0; j < 1000; j++) {
-            time_t ts = gerar_timestamp_aleatorio(dia, mes, ano);
-            float valor = (float)rand() / RAND_MAX * 100.0f;
-            fprintf(saida, "%ld %s %.2f\n", ts, sensores[i], valor);
-        }
+    char nome_arquivo[50];
+    sprintf(nome_arquivo, "sensor_%s_ordenado.txt", sensor);
+
+    FILE *arquivo = fopen(nome_arquivo, "r");
+    if (!arquivo) {
+        printf("Sensor não encontrado! Arquivo '%s' não existe.\n", nome_arquivo);
+        return 1;
     }
-    
-    fclose(saida);
-    printf("Arquivo de teste feito com sucesso\n");
+
+    Leitura leituras[10000];
+    int count = 0;
+
+    while (fscanf(arquivo, "%ld %f", &leituras[count].timestamp, &leituras[count].valor) == 2) {
+        count++;
+        if (count >= 10000) break; 
+    }
+    fclose(arquivo);
+
+    int pos = buscar_mais_proximo(leituras, count, timestamp);
+
+    printf("\nLeitura mais próxima:\n");
+    printf("Timestamp: %ld\n", leituras[pos].timestamp);
+    printf("Valor: %.2f\n", leituras[pos].valor);
+
     return 0;
 }

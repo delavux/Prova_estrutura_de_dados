@@ -1,99 +1,119 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 
 #define MAX_SENSORES 10
-#define MAX_LEITURAS 10000
+#define TAM_NOME 20
+#define TAM_STR 17
 
-// Estrutura para guardar a leitura
-typedef struct {
-    long timestamp;
-    float valor;
-} Leitura;
+time_t cria_timestamp(int dia, int mes, int ano, int hora, int min, int seg) {
+    struct tm tm_temp = {0};
+    tm_temp.tm_year = ano - 1900;
+    tm_temp.tm_mon = mes - 1;
+    tm_temp.tm_mday = dia;
+    tm_temp.tm_hour = hora;
+    tm_temp.tm_min = min;
+    tm_temp.tm_sec = seg;
+    tm_temp.tm_isdst = -1;
+    return mktime(&tm_temp);
+}
 
-// Estrutura para guardar os dados do Sensor
-typedef struct {
-    char nome[20];
-    Leitura leituras[MAX_LEITURAS];
-    int quantidade;
-} Sensor;
+time_t timestamp_aleatorio(time_t inicio, time_t fim) {
+    return inicio + rand() % (fim - inicio + 1);
+}
+
+void gera_string(char *str, int tamanho) {
+    int comprimento = 1 + rand() % (tamanho - 1);
+    for (int i = 0; i < comprimento; i++) {
+        str[i] = 'A' + rand() % 26;
+    }
+    str[comprimento] = '\0';
+}
 
 int main() {
-    Sensor sensores[MAX_SENSORES];
-    int totalSensores = 0;
+    srand(time(NULL));
+    
+    int dia_inicio, mes_inicio, ano_inicio, hora_inicio, min_inicio, seg_inicio;
+    int dia_fim, mes_fim, ano_fim, hora_fim, min_fim, seg_fim;
+    int num_sensores;
 
-    // Fazendo os sensores inicialirem
-    for (int i = 0; i < MAX_SENSORES; i++) {
-        sensores[i].quantidade = 0;
-    }
+    printf("Data/hora inicial (dd mm aaaa HH MM SS): ");
+    scanf("%d %d %d %d %d %d", &dia_inicio, &mes_inicio, &ano_inicio, &hora_inicio, &min_inicio, &seg_inicio);
+    
+    printf("Data/hora final (dd mm aaaa HH MM SS): ");
+    scanf("%d %d %d %d %d %d", &dia_fim, &mes_fim, &ano_fim, &hora_fim, &min_fim, &seg_fim);
 
-    FILE *arquivo = fopen("arquivoSensores.txt", "r");
-    if (arquivo == NULL) {
-        printf("Não foi possível abrir o arquivo.\n");
+    time_t inicio = cria_timestamp(dia_inicio, mes_inicio, ano_inicio, hora_inicio, min_inicio, seg_inicio);
+    time_t fim = cria_timestamp(dia_fim, mes_fim, ano_fim, hora_fim, min_fim, seg_fim);
+    
+    if (fim <= inicio) {
+        printf("Erro: Data final deve ser depois da inicial\n");
         return 1;
     }
 
-    long tempo;
-    char nomeSensor[20];
-    float valorLido;
+    printf("Quantidade de sensores (max %d): ", MAX_SENSORES);
+    scanf("%d", &num_sensores);
+    
+    if (num_sensores < 1 || num_sensores > MAX_SENSORES) {
+        printf("Erro: Numero de sensores invalido\n");
+        return 1;
+    }
 
-    // Leitura do arquivo linha por linha
-    while (fscanf(arquivo, "%ld %s %f", &tempo, nomeSensor, &valorLido) == 3) {
-        int achei = 0;
+    char nomes_sensores[MAX_SENSORES][TAM_NOME];
+    char tipos_sensores[MAX_SENSORES];
 
-        // Verifica se o sensor já existe
-        for (int i = 0; i < totalSensores; i++) {
-            if (strcmp(sensores[i].nome, nomeSensor) == 0) {
-                int pos = sensores[i].quantidade;
-                sensores[i].leituras[pos].timestamp = tempo;
-                sensores[i].leituras[pos].valor = valorLido;
-                sensores[i].quantidade++;
-                achei = 1;
-                break;
-            }
+    for (int i = 0; i < num_sensores; i++) {
+        printf("Nome do sensor %d: ", i+1);
+        scanf("%s", nomes_sensores[i]);
+        
+        printf("Tipo do sensor %d (i=inteiro, b=booleano, f=float, s=string): ", i+1);
+        scanf(" %c", &tipos_sensores[i]);
+        
+        if (tipos_sensores[i] != 'i' && tipos_sensores[i] != 'b' && tipos_sensores[i] != 'f' && tipos_sensores[i] != 's') {
+            printf("Erro: Tipo de sensor invalido\n");
+            return 1;
         }
+    }
 
-        // caso não achar, cria novo sensor
-        if (!achei && totalSensores < MAX_SENSORES) {
-            strcpy(sensores[totalSensores].nome, nomeSensor);
-            sensores[totalSensores].leituras[0].timestamp = tempo;
-            sensores[totalSensores].leituras[0].valor = valorLido;
-            sensores[totalSensores].quantidade = 1;
-            totalSensores++;
+    FILE *arquivo = fopen("dados_sensores.txt", "w");
+    if (!arquivo) {
+        printf("Erro ao criar arquivo\n");
+        return 1;
+    }
+
+    for (int i = 0; i < num_sensores; i++) {
+        for (int j = 0; j < 2000; j++) {
+            time_t ts = timestamp_aleatorio(inicio, fim);
+
+            switch(tipos_sensores[i]) {
+                case 'i': {
+                    int valor = rand() % 1000;
+                    fprintf(arquivo, "%ld %s %d\n", ts, nomes_sensores[i], valor);
+                    break;
+                }
+                case 'b': {
+                    int valor = rand() % 2;
+                    fprintf(arquivo, "%ld %s %s\n", ts, nomes_sensores[i], valor ? "true" : "false");
+                    break;
+                }
+                case 'f': {
+                    float valor = ((float)rand() / RAND_MAX) * 100.0f;
+                    fprintf(arquivo, "%ld %s %.2f\n", ts, nomes_sensores[i], valor);
+                    break;
+                }
+                case 's': {
+                    char valor[TAM_STR];
+                    gera_string(valor, TAM_STR);
+                    fprintf(arquivo, "%ld %s %s\n", ts, nomes_sensores[i], valor);
+                    break;
+                }
+            }
         }
     }
 
     fclose(arquivo);
+    printf("Arquivo gerado: dados_sensores.txt\n");
 
-    // Ordena e escreve os arquivos de saída
-    for (int i = 0; i < totalSensores; i++) {
-        // Ordena por timestamp 
-        for (int j = 0; j < sensores[i].quantidade - 1; j++) {
-            for (int k = 0; k < sensores[i].quantidade - 1 - j; k++) {
-                if (sensores[i].leituras[k].timestamp > sensores[i].leituras[k+1].timestamp) {
-                    Leitura temp = sensores[i].leituras[k];
-                    sensores[i].leituras[k] = sensores[i].leituras[k+1];
-                    sensores[i].leituras[k+1] = temp;
-                }
-            }
-        }
-
-        char nomeArquivo[30];
-        sprintf(nomeArquivo, "%s.txt", sensores[i].nome);
-        FILE *saida = fopen(nomeArquivo, "w");
-
-        if (saida == NULL) {
-            printf("Erro ao criar o arquivo %s\n", nomeArquivo);
-            continue;
-        }
-
-        for (int j = 0; j < sensores[i].quantidade; j++) {
-            fprintf(saida, "%ld %.2f\n", sensores[i].leituras[j].timestamp, sensores[i].leituras[j].valor);
-        }
-
-        fclose(saida);
-    }
-
-    printf("Todos os dados foram salvos em arquivos individuais.\n");
     return 0;
 }
